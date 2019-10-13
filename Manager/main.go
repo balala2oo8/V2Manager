@@ -42,6 +42,7 @@ var Mysql_Port string
 var Mysql_User string
 var Mysql_Password string
 var Mysql_Db string
+var Server_ID string
 var Mysql_TLS string
 var Mysql_MaxOpenConns int
 var Mysql_MaxIdleConns int
@@ -118,7 +119,7 @@ func start(){
     serviceLogger(fmt.Sprintf("Mysql Setting: MaxOpen(%v), MaxIdle(%v)", Mysql_MaxOpenConns, Mysql_MaxIdleConns), 0)
     //fmt.Printf("Connecting to Mysql: %s:%s, User: %s, password:%s, Using Database: %s\n", Mysql_Host, Mysql_Port, Mysql_User, Mysql_Password, Mysql_Db)
     Mysql_Server = ""
-    Mysql_Server += Mysql_User + ":" + Mysql_Password + "@tcp(" + Mysql_Host + ":" + Mysql_Port + ")/" + Mysql_Db + "?charset=utf8&tls=" + Mysql_TLS
+    Mysql_Server += Mysql_User + ":" + Mysql_Password + "@tcp(" + Mysql_Host + ":" + Mysql_Port + ")/" + Mysql_Db + "?charset=utf8&multiStatements=true&tls=" + Mysql_TLS
     initMysql()
     Run()
 }
@@ -130,6 +131,7 @@ func checkConfig(config parseConfig.Config) error{
     CheckItems["Mysql_User"] = "string"
     CheckItems["Mysql_Password"] = "string"
     CheckItems["Mysql_Db"] = "string"
+    CheckItems["Server_ID"] = "float64"
     CheckItems["Mysql_TLS"] = "string"
     CheckItems["Mysql_MaxOpenConns"] = "float64"
     CheckItems["Mysql_MaxIdleConns"] = "float64"
@@ -164,6 +166,7 @@ func initConfig(config parseConfig.Config){
     Mysql_User = config.Get("Mysql_User").(string)
     Mysql_Password = config.Get("Mysql_Password").(string)
     Mysql_Db = config.Get("Mysql_Db").(string)
+    Server_ID = strconv.Itoa(int(config.Get("Server_ID").(float64)))
     Mysql_TLS = config.Get("Mysql_TLS").(string)
     Mysql_MaxOpenConns = int(config.Get("Mysql_MaxOpenConns").(float64))
     Mysql_MaxIdleConns = int(config.Get("Mysql_MaxIdleConns").(float64))
@@ -350,7 +353,7 @@ func killV2Ray(){
 
 func selectDB() (map[int]map[string]string, error){
     var dbusersget = make(map[int]map[string]string)
-    rows, err := Mydb.Query("SELECT id, uuid, t, u, d, transfer_enable FROM user WHERE enable = 1")
+    rows, err := Mydb.Query("SELECT id, uuid, t, u, d, accountId, port, transfer_enable FROM ssr_user WHERE enable = 1 and serverId=" + Server_ID)
     if err != nil {
         serviceLogger(fmt.Sprintf("Mysql Error: %s", err), 31)
     }else{
@@ -360,15 +363,19 @@ func selectDB() (map[int]map[string]string, error){
             var t int
             var u int
             var d int
+            var accountId int
+            var port int
             var transfer_enable int
-            err = rows.Scan(&id, &uuid, &t, &u, &d, &transfer_enable)
+            err = rows.Scan(&id, &uuid, &t, &u, &d, &accountId, &port, &transfer_enable)
             checkErr(err)
             usermap := make(map[string]string)
             usermap["id"] = strconv.Itoa(id)
             usermap["uuid"] = strings.ToUpper(uuid)
             usermap["t"] = strconv.Itoa(t)
             usermap["u"] = strconv.Itoa(u)
-            usermap["d"] = strconv.Itoa(d)
+            usermap["d"] = strconv.Itoa(d)            
+            usermap["accountId"] = strconv.Itoa(accountId)
+            usermap["port"] = strconv.Itoa(port)
             usermap["transfer_enable"] = strconv.Itoa(transfer_enable)
             dbusersget[id] = usermap
         }
@@ -447,6 +454,8 @@ func CheckUsers(mcheck_time int){
                         usermap["t"] = strconv.Itoa(int(time.Now().Unix()))
                         usermap["u"] = strconv.Itoa(int(reti.Up))
                         usermap["d"] = strconv.Itoa(int(reti.Down))
+                        usermap["accountId"] = v["accountId"]
+                        usermap["port"] = v["port"]
                         umymap[v["id"]] = usermap    
                     }
                 }else{
@@ -496,15 +505,27 @@ func makeUpdateQueue(umymap map[string]map[string]string){
         var us = ""
         var ds = ""
         var ts = ""
+        var save_flow = "INSERT INTO `saveFlow`(`id`, `accountId`, `port`, `flow`, `time`) VALUES(1,1,1,1,1)"
         for k, v := range umymap{
             ids = ids + k + ","
             us = us + "WHEN " + v["id"] + " THEN u + " + v["u"] + "\n"
             ds = ds + "WHEN " + v["id"] + " THEN d + " + v["d"] + "\n"
             ts = ts + "WHEN " + v["id"] + " THEN " + v["t"] + "\n"
+            d,errord := strconv.Atoi(v["d"])
+            u,erroru := strconv.Atoi(v["u"])
+            if errord != nil{
+                fmt.Println("字符串转换成整数失败")
+            }
+            if erroru != nil{
+                fmt.Println("字符串转换成整数失败")
+            }
+            save_flow = save_flow + fmt.Sprintf(", (%s,%s,%s,%v,%v)",Server_ID,v["accountId"],v["port"],d+u,time.Now().UnixNano() / 1e6)
+            save_flow = save_flow + fmt.Sprintf(", (%s,%s,%s,%v,%v)",Server_ID,v["accountId"],v["port"],d+u+1,time.Now().UnixNano() / 1e6)
         }
         ids = strings.TrimSuffix(ids, ",")
-        var umysqlp = "UPDATE user SET u = CASE id\n" + us + "END,\nd = CASE id\n" + ds + "END,\nt = CASE id\n" + ts + "END\nWHERE id IN(" + ids + ")"
-        rows, err := Mydb.Exec(umysqlp)
+        //var umysqlp = "UPDATE ssr_user SET u = CASE id\n" + us + "END,\nd = CASE id\n" + ds + "END,\nt = CASE id\n" + ts + "END\nWHERE id IN(" + ids + ")"
+        //serviceLogger(save_flow + ";" + umysqlp, 31)
+        rows, err := Mydb.Exec(save_flow)
         if err != nil {
             serviceLogger(fmt.Sprintf("Update Failed: %s", err), 31)
         }else{

@@ -4,6 +4,7 @@
     "Mysql_User": "user",
     "Mysql_Password": "123456",
     "Mysql_Db": "MyV2Ray",
+    "Server_ID":1,
     "Mysql_TLS": "false",
     "Mysql_MaxOpenConns": 100,
     "Mysql_MaxIdleConns": 10,
