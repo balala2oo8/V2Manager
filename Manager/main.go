@@ -353,7 +353,7 @@ func killV2Ray(){
 
 func selectDB() (map[int]map[string]string, error){
     var dbusersget = make(map[int]map[string]string)
-    rows, err := Mydb.Query("SELECT id, uuid, t, u, d, accountId, port, transfer_enable FROM ssr_user WHERE enable = 1 and serverId=" + Server_ID)
+    rows, err := Mydb.Query("SELECT id, uuid, t, u, d, accountId, port, transfer_enable FROM ssr_user WHERE serverId=" + Server_ID)
     if err != nil {
         serviceLogger(fmt.Sprintf("Mysql Error: %s", err), 31)
     }else{
