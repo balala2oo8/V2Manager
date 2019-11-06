@@ -353,6 +353,15 @@ func killV2Ray(){
 
 func selectDB() (map[int]map[string]string, error){
     var dbusersget = make(map[int]map[string]string)
+    //查询节点
+    row := Mydb.QueryRow("SELECT `node_speedlimit`,`singleMode` FROM server where `id`=" + Server_ID +" AND (`node_bandwidth`<`node_bandwidth_limit` OR `node_bandwidth_limit`=0)")
+    err = row.Scan(&node_speedlimit,&singleMode)
+    if err != nil{
+        serviceLogger(fmt.Sprintf("Mysql Error Node: %s", err), 31)
+        return dbusersget, nil
+    }
+    
+    //查询用户
     rows, err := Mydb.Query("SELECT id, uuid, t, u, d, accountId, port, transfer_enable FROM ssr_user WHERE uuid is not null and serverId=" + Server_ID)
     if err != nil {
         serviceLogger(fmt.Sprintf("Mysql Error: %s", err), 31)
@@ -505,6 +514,7 @@ func makeUpdateQueue(umymap map[string]map[string]string){
         var us = ""
         var ds = ""
         var ts = ""
+        var flow = 0
         var save_flow = "INSERT INTO `saveFlow`(`id`, `accountId`, `port`, `flow`, `time`) VALUES(1,1,1,1,1)"
         for k, v := range umymap{
             ids = ids + k + ","
@@ -519,12 +529,14 @@ func makeUpdateQueue(umymap map[string]map[string]string){
             if erroru != nil{
                 fmt.Println("字符串转换成整数失败")
             }
+            flow = flow + d + u;
             save_flow = save_flow + fmt.Sprintf(", (%s,%s,%s,%v,%v)",Server_ID,v["accountId"],v["port"],d+u,time.Now().UnixNano() / 1e6)
             //save_flow = save_flow + fmt.Sprintf(", (%s,%s,%s,%v,%v)",Server_ID,v["accountId"],v["port"],d+u+1,time.Now().UnixNano() / 1e6)
         }
         ids = strings.TrimSuffix(ids, ",")
         //var umysqlp = "UPDATE ssr_user SET u = CASE id\n" + us + "END,\nd = CASE id\n" + ds + "END,\nt = CASE id\n" + ts + "END\nWHERE id IN(" + ids + ")"
         //serviceLogger(save_flow + ";" + umysqlp, 31)
+
         rows, err := Mydb.Exec(save_flow)
         if err != nil {
             serviceLogger(fmt.Sprintf("Update Failed: %s", err), 31)
@@ -534,6 +546,12 @@ func makeUpdateQueue(umymap map[string]map[string]string){
                 serviceLogger(fmt.Sprintf("Update Failed: %s", err), 31)
             }
             serviceLogger(fmt.Sprintf("Mysql Update Success, Affected %v Rows", int(rowCount)), 32)
+        }
+        //记录节点流量
+        result,err := DB.Exec("UPDATE `server` SET `node_heartbeat`=unix_timestamp(),`node_bandwidth`=`node_bandwidth`+ ? WHERE `id` = ?",flow,Server_ID)
+        if err != nil{
+            serviceLogger(fmt.Sprintf("Update Failed: %s", err), 31)
+            return
         }
     }else{
         serviceLogger("Skipped Mysql Update(No Active Up And Down)", 32)
