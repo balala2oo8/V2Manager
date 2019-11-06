@@ -520,7 +520,7 @@ func makeUpdateQueue(umymap map[string]map[string]string){
                 fmt.Println("字符串转换成整数失败")
             }
             save_flow = save_flow + fmt.Sprintf(", (%s,%s,%s,%v,%v)",Server_ID,v["accountId"],v["port"],d+u,time.Now().UnixNano() / 1e6)
-            save_flow = save_flow + fmt.Sprintf(", (%s,%s,%s,%v,%v)",Server_ID,v["accountId"],v["port"],d+u+1,time.Now().UnixNano() / 1e6)
+            //save_flow = save_flow + fmt.Sprintf(", (%s,%s,%s,%v,%v)",Server_ID,v["accountId"],v["port"],d+u+1,time.Now().UnixNano() / 1e6)
         }
         ids = strings.TrimSuffix(ids, ",")
         //var umysqlp = "UPDATE ssr_user SET u = CASE id\n" + us + "END,\nd = CASE id\n" + ds + "END,\nt = CASE id\n" + ts + "END\nWHERE id IN(" + ids + ")"
