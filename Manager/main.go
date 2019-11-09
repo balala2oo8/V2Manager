@@ -354,6 +354,8 @@ func killV2Ray(){
 func selectDB() (map[int]map[string]string, error){
     var dbusersget = make(map[int]map[string]string)
     //查询节点
+    var node_speedlimit float64
+    var singleMode string
     row := Mydb.QueryRow("SELECT `node_speedlimit`,`singleMode` FROM server where `id`=" + Server_ID +" AND (`node_bandwidth`<`node_bandwidth_limit` OR `node_bandwidth_limit`=0)")
     err = row.Scan(&node_speedlimit,&singleMode)
     if err != nil{
@@ -548,7 +550,7 @@ func makeUpdateQueue(umymap map[string]map[string]string){
             serviceLogger(fmt.Sprintf("Mysql Update Success, Affected %v Rows", int(rowCount)), 32)
         }
         //记录节点流量
-        result,err := DB.Exec("UPDATE `server` SET `node_heartbeat`=unix_timestamp(),`node_bandwidth`=`node_bandwidth`+ ? WHERE `id` = ?",flow,Server_ID)
+        result,err := Mydb.Exec("UPDATE `server` SET `node_heartbeat`=unix_timestamp(),`node_bandwidth`=`node_bandwidth`+ ? WHERE `id` = ?",flow,Server_ID)
         if err != nil{
             serviceLogger(fmt.Sprintf("Update Failed: %s", err), 31)
             return
