@@ -356,8 +356,7 @@ func selectDB() (map[int]map[string]string, error){
     //查询节点
     var node_speedlimit float64
     var singleMode string
-    row := Mydb.QueryRow("SELECT `node_speedlimit`,`singleMode` FROM server where `id`=" + Server_ID +" AND (`node_bandwidth`<`node_bandwidth_limit` OR `node_bandwidth_limit`=0)")
-    err = row.Scan(&node_speedlimit,&singleMode)
+    row,err := Mydb.QueryRow("SELECT `node_speedlimit`,`singleMode` FROM server where `id`=" + Server_ID +" AND (`node_bandwidth`<`node_bandwidth_limit` OR `node_bandwidth_limit`=0)").Scan(&node_speedlimit,&singleMode)
     if err != nil{
         serviceLogger(fmt.Sprintf("Mysql Error Node: %s", err), 31)
         return dbusersget, nil
