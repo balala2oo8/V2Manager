@@ -356,7 +356,7 @@ func selectDB() (map[int]map[string]string, error){
     //查询节点
     var node_speedlimit float64
     var singleMode string
-    row,err := Mydb.QueryRow("SELECT `node_speedlimit`,`singleMode` FROM server where `id`=" + Server_ID +" AND (`node_bandwidth`<`node_bandwidth_limit` OR `node_bandwidth_limit`=0)").Scan(&node_speedlimit,&singleMode)
+    err := Mydb.QueryRow("SELECT `node_speedlimit`,`singleMode` FROM server where `id`=" + Server_ID +" AND (`node_bandwidth`<`node_bandwidth_limit` OR `node_bandwidth_limit`=0)").Scan(&node_speedlimit,&singleMode)
     if err != nil{
         serviceLogger(fmt.Sprintf("Mysql Error Node: %s", err), 31)
         return dbusersget, nil
@@ -553,6 +553,12 @@ func makeUpdateQueue(umymap map[string]map[string]string){
         if err != nil{
             serviceLogger(fmt.Sprintf("Update Failed: %s", err), 31)
             return
+        }else{
+            rowAffected, err := result.RowsAffected()
+            if err != nil{
+                serviceLogger(fmt.Sprintf("Update Server Failed: %s", err), 31)
+            }
+            serviceLogger(fmt.Sprintf("Mysql Update Server Success, Affected %v Rows", int(rowAffected)), 32)
         }
     }else{
         serviceLogger("Skipped Mysql Update(No Active Up And Down)", 32)
