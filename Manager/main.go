@@ -250,7 +250,7 @@ func checkV2ray(pid int) bool{
         serviceLogger(fmt.Sprintf("Check - Search Failed(Prehaps no V2Ray Running), %s!", err), 31)
     }else{
         total := string(output)
-        if(strings.Contains(total, "/usr/bin/v2ray/v2ray")){
+        if(strings.Contains(total, "/usr/local/bin/v2ray")){
             return true
         }
         return false
@@ -283,7 +283,7 @@ func startV2Ray(){
 }
 
 func runV2Ray(v2config string) (int, error){
-    cmd := exec.Command("/usr/bin/v2ray/v2ray", "-config", v2config)
+    cmd := exec.Command("/usr/local/bin/v2ray", "-config", v2config)
     ppReader, err := cmd.StdoutPipe()
     defer ppReader.Close()
     var bufReader = bufio.NewReader(ppReader)
@@ -324,7 +324,7 @@ func killV2Ray(){
     p := pipe.Line(
         pipe.Exec("ps", "-ef"),
         pipe.Exec("grep", "-v", "grep"),
-        pipe.Exec("grep", "-i", "/usr/bin/v2ray/v2ray"),
+        pipe.Exec("grep", "-i", "/usr/local/bin/v2ray"),
         pipe.Exec("awk", "{print $2}"),
     )
     output, err := pipe.CombinedOutputTimeout(p, time.Duration(5) * time.Second)
